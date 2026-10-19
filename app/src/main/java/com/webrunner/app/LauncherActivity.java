@@ -3,7 +3,6 @@ package com.webrunner.app;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,11 +29,18 @@ public class LauncherActivity extends AppCompatActivity {
     private RecyclerView recycler;
     private TextView empty;
     private AppAdapter adapter;
+    private File appsRoot;   // private folder
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
+
+        // This is the private folder - no permission needed
+        appsRoot = new File(getExternalFilesDir(null), ".webrunner");
+        if (!appsRoot.exists()) {
+            appsRoot.mkdirs();
+        }
 
         recycler = findViewById(R.id.recycler);
         empty = findViewById(R.id.empty);
@@ -54,10 +60,8 @@ public class LauncherActivity extends AppCompatActivity {
 
     private void scan() {
         apps.clear();
-        File root = new File(Environment.getExternalStorageDirectory(), ".webrunner");
-        if (!root.exists()) root.mkdirs();
 
-        File[] folders = root.listFiles(File::isDirectory);
+        File[] folders = appsRoot.listFiles(File::isDirectory);
         if (folders != null) {
             for (File f : folders) {
                 File index = new File(f, "index.html");
@@ -80,8 +84,15 @@ public class LauncherActivity extends AppCompatActivity {
         }
 
         adapter.notifyDataSetChanged();
-        empty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
-        recycler.setVisibility(apps.isEmpty() ? View.GONE : View.VISIBLE);
+
+        if (apps.isEmpty()) {
+            empty.setVisibility(View.VISIBLE);
+            empty.setText("No apps found.\n\nPut your apps here:\n\n" + appsRoot.getAbsolutePath() + "\n\nCreate a folder for each app and put index.html inside it.");
+            recycler.setVisibility(View.GONE);
+        } else {
+            empty.setVisibility(View.GONE);
+            recycler.setVisibility(View.VISIBLE);
+        }
     }
 
     @Override
