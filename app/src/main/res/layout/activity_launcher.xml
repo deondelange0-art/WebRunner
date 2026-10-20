@@ -3,36 +3,64 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="#121212">
 
-    <TextView
+    <!-- Top bar -->
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="My Apps"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:paddingBottom="12dp" />
+        android:layout_height="56dp"
+        android:background="#5E35B1"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:text="My Apps"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="© EnderCodes"
+            android:textColor="#B39DDB"
+            android:textSize="12sp" />
+    </RelativeLayout>
+
+    <!-- App list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:padding="12dp"
+        android:clipToPadding="false" />
 
+    <!-- Empty state -->
     <TextView
         android:id="@+id/empty"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="No apps found.\n\nCreate folders in:\n/storage/emulated/0/.webrunner/\n\nEach folder needs index.html"
-        android:textSize="16sp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:gravity="center"
-        android:padding="24dp"
+        android:padding="32dp"
+        android:textColor="#AAAAAA"
+        android:textSize="16sp"
         android:visibility="gone" />
 
+    <!-- Bottom button -->
     <Button
         android:id="@+id/btn_custom"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
+        android:layout_margin="16dp"
+        android:backgroundTint="#7E57C2"
         android:text="Open Custom Folder"
-        android:layout_marginTop="12dp" />
+        android:textColor="#FFFFFF"
+        android:textAllCaps="false" />
 </LinearLayout>
