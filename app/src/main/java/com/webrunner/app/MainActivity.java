@@ -121,11 +121,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public class Bridge {
+
+        // ===== Text-to-Speech =====
         @JavascriptInterface
         public void speak(String text) {
             if (tts != null) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "id");
         }
 
+        @JavascriptInterface
+        public void stopSpeaking() {
+            if (tts != null) tts.stop();
+        }
+
+        // ===== Microphone =====
         @JavascriptInterface
         public void startListening() {
             runOnUiThread(() -> {
@@ -147,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        // ===== File storage =====
         @JavascriptInterface
         public boolean saveFile(String name, String data) {
             try {
@@ -176,6 +185,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public boolean deleteFile(String name) {
+            try {
+                if (name.contains("..") || name.contains("/")) return false;
+                File f = new File(dataDir, name);
+                return f.exists() && f.delete();
+            } catch (Exception e) { return false; }
+        }
+
+        @JavascriptInterface
         public String listFiles() {
             try {
                 File[] files = dataDir.listFiles();
@@ -183,6 +201,11 @@ public class MainActivity extends AppCompatActivity {
                 if (files != null) for (File f : files) if (f.isFile()) arr.put(f.getName());
                 return arr.toString();
             } catch (Exception e) { return "[]"; }
+        }
+
+        @JavascriptInterface
+        public String getDataPath() {
+            return dataDir.getAbsolutePath();
         }
     }
 
