@@ -51,15 +51,12 @@ public class MainActivity extends AppCompatActivity {
         setupWebView();
 
         String filePath = getIntent().getStringExtra("file_path");
-        String safUri = getIntent().getStringExtra("saf_uri");
 
-        if (safUri != null) {
-            webView.loadUrl(safUri);
-        } else if (filePath != null) {
+        if (filePath != null) {
             webView.loadUrl("file://" + filePath);
-        } else {
-            finish();
-        }
+         } else {
+         finish();
+     }
     }
 
     private void initTts() {
