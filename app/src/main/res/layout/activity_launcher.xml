@@ -53,14 +53,4 @@
         android:textSize="16sp"
         android:visibility="gone" />
 
-    <!-- Bottom button -->
-    <Button
-        android:id="@+id/btn_custom"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_margin="16dp"
-        android:backgroundTint="#7E57C2"
-        android:text="Open Custom Folder"
-        android:textColor="#FFFFFF"
-        android:textAllCaps="false" />
 </LinearLayout>
