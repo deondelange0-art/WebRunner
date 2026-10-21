@@ -2,19 +2,15 @@ package com.webrunner.app;
 
 import android.content.Intent;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -26,7 +22,6 @@ import java.util.List;
 
 public class LauncherActivity extends AppCompatActivity {
 
-    private static final int PICK_FOLDER = 1001;
     private final List<AppInfo> apps = new ArrayList<>();
     private RecyclerView recycler;
     private TextView empty;
@@ -46,16 +41,10 @@ public class LauncherActivity extends AppCompatActivity {
 
         recycler = findViewById(R.id.recycler);
         empty = findViewById(R.id.empty);
-        Button btnCustom = findViewById(R.id.btn_custom);
 
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new AppAdapter();
         recycler.setAdapter(adapter);
-
-        btnCustom.setOnClickListener(v -> {
-            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            startActivityForResult(i, PICK_FOLDER);
-        });
 
         scan();
     }
@@ -105,29 +94,6 @@ public class LauncherActivity extends AppCompatActivity {
         } else {
             empty.setVisibility(View.GONE);
             recycler.setVisibility(View.VISIBLE);
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_FOLDER && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                getContentResolver().takePersistableUriPermission(uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                DocumentFile dir = DocumentFile.fromTreeUri(this, uri);
-                if (dir != null) {
-                    DocumentFile index = dir.findFile("index.html");
-                    if (index != null) {
-                        Intent i = new Intent(this, MainActivity.class);
-                        i.putExtra("saf_uri", index.getUri().toString());
-                        startActivity(i);
-                    } else {
-                        Toast.makeText(this, "No index.html found", Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
         }
     }
 
