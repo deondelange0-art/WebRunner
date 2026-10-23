@@ -62,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
         dataDir = new File(getFilesDir(), "js_data");
         if (!dataDir.exists()) dataDir.mkdirs();
 
-        // Show floating button only if developer mode is ON
         SharedPreferences prefs = getSharedPreferences(ToolsActivity.PREFS, MODE_PRIVATE);
         if (prefs.getBoolean(ToolsActivity.KEY_DEV, false)) {
             btnConsole.setVisibility(View.VISIBLE);
@@ -100,7 +99,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void initTts() {
         tts = new TextToSpeech(this, status -> {
-            if (status == TextToSpeech.SUCCESS) tts.setLanguage(Locale.getDefault());
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.getDefault());
+            }
         });
     }
 
@@ -160,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
 
     public class Bridge {
 
+        // ===== Text-to-Speech =====
         @JavascriptInterface
         public void speak(String text) {
             log("speak: " + text);
@@ -172,6 +174,45 @@ public class MainActivity extends AppCompatActivity {
             if (tts != null) tts.stop();
         }
 
+        @JavascriptInterface
+        public boolean setLanguage(String code) {
+            log("setLanguage: " + code);
+            if (tts == null) return false;
+            try {
+                Locale locale;
+                if (code.contains("-")) {
+                    String[] parts = code.split("-");
+                    locale = new Locale(parts[0], parts[1]);
+                } else {
+                    locale = new Locale(code);
+                }
+                int result = tts.setLanguage(locale);
+                return result != TextToSpeech.LANG_MISSING_DATA
+                        && result != TextToSpeech.LANG_NOT_SUPPORTED;
+            } catch (Exception e) {
+                log("setLanguage error: " + e.getMessage());
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void setSpeechRate(float rate) {
+            log("setSpeechRate: " + rate);
+            if (tts != null) tts.setSpeechRate(rate);
+        }
+
+        @JavascriptInterface
+        public void setPitch(float pitch) {
+            log("setPitch: " + pitch);
+            if (tts != null) tts.setPitch(pitch);
+        }
+
+        @JavascriptInterface
+        public boolean isSpeaking() {
+            return tts != null && tts.isSpeaking();
+        }
+
+        // ===== Microphone =====
         @JavascriptInterface
         public void startListening() {
             log("startListening");
@@ -196,6 +237,7 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        // ===== File storage =====
         @JavascriptInterface
         public boolean saveFile(String name, String data) {
             log("saveFile: " + name);
