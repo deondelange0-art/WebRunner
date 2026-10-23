@@ -225,17 +225,20 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        @JavascriptInterface
-        public void stopListening() {
-            log("stopListening");
-            runOnUiThread(() -> {
-                if (speechRecognizer != null) {
-                    try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
-                    try { speechRecognizer.cancel(); } catch (Exception ignored) {}
-                    listening = false;
-                }
-            });
+@JavascriptInterface
+public void stopListening() {
+    log("stopListening");
+    runOnUiThread(() -> {
+        if (speechRecognizer != null) {
+            try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
+            try { speechRecognizer.cancel(); } catch (Exception ignored) {}
         }
+        listening = false;
+        // Tell the page that listening has stopped
+        webView.evaluateJavascript(
+            "window.onSpeechStopped&&window.onSpeechStopped();", null);
+    });
+}
 
         // ===== File storage =====
         @JavascriptInterface
