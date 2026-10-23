@@ -2,18 +2,22 @@ package com.webrunner.app;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -25,7 +29,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -36,6 +42,12 @@ public class MainActivity extends AppCompatActivity {
     private boolean listening = false;
     private File dataDir;
 
+    private Button btnConsole;
+    private View consolePanel;
+    private TextView consoleText;
+    private final StringBuilder log = new StringBuilder();
+    private boolean consoleVisible = false;
+
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,19 +55,46 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webview);
+        btnConsole = findViewById(R.id.btn_console);
+        consolePanel = findViewById(R.id.console_panel);
+        consoleText = findViewById(R.id.console_text);
+
         dataDir = new File(getFilesDir(), "js_data");
         if (!dataDir.exists()) dataDir.mkdirs();
+
+        // Show floating button only if developer mode is ON
+        SharedPreferences prefs = getSharedPreferences(ToolsActivity.PREFS, MODE_PRIVATE);
+        if (prefs.getBoolean(ToolsActivity.KEY_DEV, false)) {
+            btnConsole.setVisibility(View.VISIBLE);
+        }
+
+        btnConsole.setOnClickListener(v -> toggleConsole());
+        findViewById(R.id.btn_close_console).setOnClickListener(v -> toggleConsole());
 
         initTts();
         initSpeech();
         setupWebView();
 
         String filePath = getIntent().getStringExtra("file_path");
-
         if (filePath != null) {
+            log("Loading: " + filePath);
             webView.loadUrl("file://" + filePath);
         } else {
             finish();
+        }
+    }
+
+    private void toggleConsole() {
+        consoleVisible = !consoleVisible;
+        consolePanel.setVisibility(consoleVisible ? View.VISIBLE : View.GONE);
+        if (consoleVisible) consoleText.setText(log.toString());
+    }
+
+    private void log(String msg) {
+        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+        log.append("[").append(time).append("] ").append(msg).append("\n");
+        if (consoleVisible) {
+            runOnUiThread(() -> consoleText.setText(log.toString()));
         }
     }
 
@@ -80,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(int error) {
                 listening = false;
+                log("Speech error: " + error);
                 runOnUiThread(() -> webView.evaluateJavascript(
                         "window.onSpeechError&&window.onSpeechError('Error "+error+"');", null));
             }
@@ -89,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
                 listening = false;
                 ArrayList<String> list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 String text = (list != null && !list.isEmpty()) ? list.get(0) : "";
+                log("Speech result: " + text);
                 String safe = text.replace("'", "\\'");
                 runOnUiThread(() -> webView.evaluateJavascript(
                         "window.onSpeechResult&&window.onSpeechResult('"+safe+"');", null));
@@ -119,20 +160,21 @@ public class MainActivity extends AppCompatActivity {
 
     public class Bridge {
 
-        // ===== Text-to-Speech =====
         @JavascriptInterface
         public void speak(String text) {
+            log("speak: " + text);
             if (tts != null) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "id");
         }
 
         @JavascriptInterface
         public void stopSpeaking() {
+            log("stopSpeaking");
             if (tts != null) tts.stop();
         }
 
-        // ===== Microphone =====
         @JavascriptInterface
         public void startListening() {
+            log("startListening");
             runOnUiThread(() -> {
                 if (speechRecognizer == null || listening) return;
                 Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -144,22 +186,19 @@ public class MainActivity extends AppCompatActivity {
 
         @JavascriptInterface
         public void stopListening() {
+            log("stopListening");
             runOnUiThread(() -> {
                 if (speechRecognizer != null) {
-                    try {
-                        speechRecognizer.stopListening();
-                    } catch (Exception ignored) {}
-                    try {
-                        speechRecognizer.cancel();
-                    } catch (Exception ignored) {}
+                    try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
+                    try { speechRecognizer.cancel(); } catch (Exception ignored) {}
                     listening = false;
                 }
             });
         }
 
-        // ===== File storage =====
         @JavascriptInterface
         public boolean saveFile(String name, String data) {
+            log("saveFile: " + name);
             try {
                 if (name.contains("..") || name.contains("/")) return false;
                 File f = new File(dataDir, name);
@@ -167,11 +206,15 @@ public class MainActivity extends AppCompatActivity {
                     out.write(data.getBytes(StandardCharsets.UTF_8));
                 }
                 return true;
-            } catch (Exception e) { return false; }
+            } catch (Exception e) {
+                log("saveFile error: " + e.getMessage());
+                return false;
+            }
         }
 
         @JavascriptInterface
         public String loadFile(String name) {
+            log("loadFile: " + name);
             try {
                 if (name.contains("..") || name.contains("/")) return null;
                 File f = new File(dataDir, name);
@@ -183,11 +226,15 @@ public class MainActivity extends AppCompatActivity {
                     while ((line = r.readLine()) != null) sb.append(line).append("\n");
                 }
                 return sb.toString().trim();
-            } catch (Exception e) { return null; }
+            } catch (Exception e) {
+                log("loadFile error: " + e.getMessage());
+                return null;
+            }
         }
 
         @JavascriptInterface
         public boolean deleteFile(String name) {
+            log("deleteFile: " + name);
             try {
                 if (name.contains("..") || name.contains("/")) return false;
                 File f = new File(dataDir, name);
@@ -197,6 +244,7 @@ public class MainActivity extends AppCompatActivity {
 
         @JavascriptInterface
         public String listFiles() {
+            log("listFiles");
             try {
                 File[] files = dataDir.listFiles();
                 JSONArray arr = new JSONArray();
@@ -207,14 +255,20 @@ public class MainActivity extends AppCompatActivity {
 
         @JavascriptInterface
         public String getDataPath() {
+            log("getDataPath");
             return dataDir.getAbsolutePath();
         }
     }
 
     @Override
     public void onBackPressed() {
-        if (webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        if (consoleVisible) {
+            toggleConsole();
+        } else if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
