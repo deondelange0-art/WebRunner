@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="#121212">
 
-    <!-- Top bar -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -23,6 +22,19 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/btn_tools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toStartOf="@+id/copyright"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="16dp"
+            android:text="Tools"
+            android:textColor="#E1BEE7"
+            android:textSize="14sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/copyright"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
@@ -32,7 +44,6 @@
             android:textSize="12sp" />
     </RelativeLayout>
 
-    <!-- App list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler"
         android:layout_width="match_parent"
@@ -41,7 +52,6 @@
         android:padding="12dp"
         android:clipToPadding="false" />
 
-    <!-- Empty state -->
     <TextView
         android:id="@+id/empty"
         android:layout_width="match_parent"
