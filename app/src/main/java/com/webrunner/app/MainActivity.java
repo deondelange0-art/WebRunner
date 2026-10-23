@@ -54,9 +54,9 @@ public class MainActivity extends AppCompatActivity {
 
         if (filePath != null) {
             webView.loadUrl("file://" + filePath);
-         } else {
-         finish();
-     }
+        } else {
+            finish();
+        }
     }
 
     private void initTts() {
@@ -145,8 +145,13 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void stopListening() {
             runOnUiThread(() -> {
-                if (speechRecognizer != null && listening) {
-                    speechRecognizer.stopListening();
+                if (speechRecognizer != null) {
+                    try {
+                        speechRecognizer.stopListening();
+                    } catch (Exception ignored) {}
+                    try {
+                        speechRecognizer.cancel();
+                    } catch (Exception ignored) {}
                     listening = false;
                 }
             });
