@@ -1,5 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<WebView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/webview"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" />
+    android:layout_height="match_parent">
+
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Floating debug button (only visible in developer mode) -->
+    <Button
+        android:id="@+id/btn_console"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:text="≡"
+        android:textSize="22sp"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#7E57C2"
+        android:visibility="gone" />
+
+    <!-- Console overlay -->
+    <LinearLayout
+        android:id="@+id/console_panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#DD000000"
+        android:visibility="gone"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Debug Console"
+            android:textColor="#CE93D8"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/console_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#EEEEEE"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:text="Console ready...\n" />
+        </ScrollView>
+
+        <Button
+            android:id="@+id/btn_close_console"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Close Console"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+</FrameLayout>
