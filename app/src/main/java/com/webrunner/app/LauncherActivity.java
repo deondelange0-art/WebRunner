@@ -33,14 +33,14 @@ public class LauncherActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
 
-        // Private folder - no special permission needed
         appsRoot = new File(getExternalFilesDir(null), ".webrunner");
-        if (!appsRoot.exists()) {
-            appsRoot.mkdirs();
-        }
+        if (!appsRoot.exists()) appsRoot.mkdirs();
 
         recycler = findViewById(R.id.recycler);
         empty = findViewById(R.id.empty);
+
+        findViewById(R.id.btn_tools).setOnClickListener(v ->
+                startActivity(new Intent(this, ToolsActivity.class)));
 
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new AppAdapter();
@@ -51,7 +51,6 @@ public class LauncherActivity extends AppCompatActivity {
 
     private void scan() {
         apps.clear();
-
         File[] folders = appsRoot.listFiles(File::isDirectory);
         if (folders != null) {
             for (File f : folders) {
@@ -62,7 +61,6 @@ public class LauncherActivity extends AppCompatActivity {
                     info.path = index.getAbsolutePath();
                     info.desc = "Tap to open";
 
-                    // Optional description
                     File infoFile = new File(f, "info.txt");
                     if (infoFile.exists()) {
                         try (BufferedReader br = new BufferedReader(new FileReader(infoFile))) {
@@ -71,12 +69,9 @@ public class LauncherActivity extends AppCompatActivity {
                         } catch (Exception ignored) {}
                     }
 
-                    // Optional icon
                     File icon = new File(f, "icon.png");
                     if (!icon.exists()) icon = new File(f, "icon.jpg");
-                    if (icon.exists()) {
-                        info.iconPath = icon.getAbsolutePath();
-                    }
+                    if (icon.exists()) info.iconPath = icon.getAbsolutePath();
 
                     apps.add(info);
                 }
@@ -84,7 +79,6 @@ public class LauncherActivity extends AppCompatActivity {
         }
 
         adapter.notifyDataSetChanged();
-
         if (apps.isEmpty()) {
             empty.setVisibility(View.VISIBLE);
             empty.setText("No apps found.\n\nPut your apps here:\n\n" +
@@ -98,10 +92,7 @@ public class LauncherActivity extends AppCompatActivity {
     }
 
     static class AppInfo {
-        String name;
-        String desc;
-        String path;
-        String iconPath;
+        String name, desc, path, iconPath;
     }
 
     class AppAdapter extends RecyclerView.Adapter<AppAdapter.VH> {
@@ -118,13 +109,11 @@ public class LauncherActivity extends AppCompatActivity {
             AppInfo a = apps.get(pos);
             h.name.setText(a.name);
             h.desc.setText(a.desc);
-
             if (a.iconPath != null) {
                 h.icon.setImageBitmap(BitmapFactory.decodeFile(a.iconPath));
             } else {
                 h.icon.setImageResource(android.R.drawable.ic_menu_gallery);
             }
-
             h.itemView.setOnClickListener(v -> {
                 Intent i = new Intent(LauncherActivity.this, MainActivity.class);
                 i.putExtra("file_path", a.path);
@@ -133,14 +122,11 @@ public class LauncherActivity extends AppCompatActivity {
         }
 
         @Override
-        public int getItemCount() {
-            return apps.size();
-        }
+        public int getItemCount() { return apps.size(); }
 
         class VH extends RecyclerView.ViewHolder {
             ImageView icon;
             TextView name, desc;
-
             VH(View v) {
                 super(v);
                 icon = v.findViewById(R.id.icon);
