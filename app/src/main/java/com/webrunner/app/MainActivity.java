@@ -420,6 +420,32 @@ public void stopListening() {
     }
 
     @Override
+protected void onPause() {
+    super.onPause();
+    // Stop recording/playback when app goes to background
+    try {
+        if (mediaRecorder != null) {
+            mediaRecorder.stop();
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+    } catch (Exception ignored) {}
+    stopAudioPlayback();
+}
+
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    try {
+        if (mediaRecorder != null) {
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+    } catch (Exception ignored) {}
+    stopAudioPlayback();
+}
+    
+    @Override
     public void onBackPressed() {
         if (consoleVisible) {
             toggleConsole();
