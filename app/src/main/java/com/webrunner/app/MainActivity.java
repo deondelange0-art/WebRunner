@@ -1,5 +1,11 @@
 package com.webrunner.app;
 
+import android.media.MediaRecorder;
+import android.media.MediaPlayer;
+import android.media.AudioManager;
+import java.io.File;
+import java.io.IOException;
+
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -47,6 +53,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView consoleText;
     private final StringBuilder log = new StringBuilder();
     private boolean consoleVisible = false;
+
+    private MediaRecorder mediaRecorder;
+private MediaPlayer mediaPlayer;
+private String currentRecordingPath = null;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -161,6 +171,214 @@ public class MainActivity extends AppCompatActivity {
 
     public class Bridge {
 
+        // -------------------- Audio Recording & Playback --------------------
+
+@JavascriptInterface
+public boolean startAudioRecording() {
+    try {
+        // Stop any previous recording
+        if (mediaRecorder != null) {
+            try { mediaRecorder.stop(); } catch (Exception ignored) {}
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+
+        // Create file in the same private folder used by saveFile / loadFile
+        File dir = new File(getFilesDir(), "js_data");
+        if (!dir.exists()) dir.mkdirs();
+
+        File outFile = new File(dir, "recording_" + System.currentTimeMillis() + ".m4a");
+        currentRecordingPath = outFile.getAbsolutePath();
+
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setAudioEncodingBitRate(128000);
+        mediaRecorder.setAudioSamplingRate(44100);
+        mediaRecorder.setOutputFile(currentRecordingPath);
+        mediaRecorder.prepare();
+        mediaRecorder.start();
+
+        return true;
+    } catch (Exception e) {
+        e.printStackTrace();
+        currentRecordingPath = null;
+        return false;
+    }
+}
+
+@JavascriptInterface
+public String stopAudioRecording() {
+    try {
+        if (mediaRecorder != null) {
+            mediaRecorder.stop();
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+        return currentRecordingPath;   // returns full path or null
+    } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+
+@JavascriptInterface
+public boolean playAudio(String path) {
+    try {
+        stopAudioPlayback();   // stop any previous playback
+
+        if (path == null || path.isEmpty()) return false;
+
+        File f = new File(path);
+        if (!f.exists()) return false;
+
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mediaPlayer.setDataSource(path);
+        mediaPlayer.prepare();
+        mediaPlayer.start();
+        return true;
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
+@JavascriptInterface
+public void stopAudioPlayback() {
+    try {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
+@JavascriptInterface
+public boolean deleteAudio(String path) {
+    try {
+        if (path == null || path.isEmpty()) return false;
+        File f = new File(path);
+        return f.exists() && f.delete();
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
+@JavascriptInterface
+public boolean isAudioPlaying() {
+    return mediaPlayer != null && mediaPlayer.isPlaying();
+}
+
+// -------------------- Audio Recording & Playback --------------------
+
+@JavascriptInterface
+public boolean startAudioRecording() {
+    try {
+        // Stop any previous recording
+        if (mediaRecorder != null) {
+            try { mediaRecorder.stop(); } catch (Exception ignored) {}
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+
+        // Create file in the same private folder used by saveFile / loadFile
+        File dir = new File(getFilesDir(), "js_data");
+        if (!dir.exists()) dir.mkdirs();
+
+        File outFile = new File(dir, "recording_" + System.currentTimeMillis() + ".m4a");
+        currentRecordingPath = outFile.getAbsolutePath();
+
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setAudioEncodingBitRate(128000);
+        mediaRecorder.setAudioSamplingRate(44100);
+        mediaRecorder.setOutputFile(currentRecordingPath);
+        mediaRecorder.prepare();
+        mediaRecorder.start();
+
+        return true;
+    } catch (Exception e) {
+        e.printStackTrace();
+        currentRecordingPath = null;
+        return false;
+    }
+}
+
+@JavascriptInterface
+public String stopAudioRecording() {
+    try {
+        if (mediaRecorder != null) {
+            mediaRecorder.stop();
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+        return currentRecordingPath;   // returns full path or null
+    } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+
+@JavascriptInterface
+public boolean playAudio(String path) {
+    try {
+        stopAudioPlayback();   // stop any previous playback
+
+        if (path == null || path.isEmpty()) return false;
+
+        File f = new File(path);
+        if (!f.exists()) return false;
+
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mediaPlayer.setDataSource(path);
+        mediaPlayer.prepare();
+        mediaPlayer.start();
+        return true;
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
+@JavascriptInterface
+public void stopAudioPlayback() {
+    try {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
+@JavascriptInterface
+public boolean deleteAudio(String path) {
+    try {
+        if (path == null || path.isEmpty()) return false;
+        File f = new File(path);
+        return f.exists() && f.delete();
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
+@JavascriptInterface
+public boolean isAudioPlaying() {
+    return mediaPlayer != null && mediaPlayer.isPlaying();
+    }
+        
         // ===== Text-to-Speech =====
         @JavascriptInterface
         public void speak(String text) {
