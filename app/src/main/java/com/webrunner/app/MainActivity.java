@@ -31,11 +31,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -64,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
@@ -98,9 +101,13 @@ public class MainActivity extends AppCompatActivity {
         String filePath = getIntent().getStringExtra("file_path");
 
         if (filePath != null) {
+
             log("Loading: " + filePath);
+
             webView.loadUrl("file://" + filePath);
+
         } else {
+
             finish();
         }
     }
@@ -138,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
                 .append("\n");
 
         if (consoleVisible) {
+
             runOnUiThread(() ->
                     consoleText.setText(log.toString())
             );
@@ -292,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
 
     // =====================================================
     // AUDIO PLAYBACK CLEANUP
-    // THIS METHOD IS ACCESSIBLE TO BOTH CLASSES
+    // Accessible from MainActivity and Bridge
     // =====================================================
 
     private void stopAudioPlayback() {
@@ -503,10 +511,12 @@ public class MainActivity extends AppCompatActivity {
         public boolean isAudioPlaying() {
 
             try {
+
                 return mediaPlayer != null &&
                         mediaPlayer.isPlaying();
 
             } catch (Exception e) {
+
                 return false;
             }
         }
