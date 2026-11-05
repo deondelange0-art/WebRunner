@@ -3,8 +3,6 @@ package com.webrunner.app;
 import android.media.MediaRecorder;
 import android.media.MediaPlayer;
 import android.media.AudioManager;
-import java.io.File;
-import java.io.IOException;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
@@ -33,7 +31,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -51,17 +48,24 @@ public class MainActivity extends AppCompatActivity {
     private Button btnConsole;
     private View consolePanel;
     private TextView consoleText;
+
     private final StringBuilder log = new StringBuilder();
     private boolean consoleVisible = false;
 
     private MediaRecorder mediaRecorder;
-private MediaPlayer mediaPlayer;
-private String currentRecordingPath = null;
+    private MediaPlayer mediaPlayer;
+    private String currentRecordingPath = null;
+
+
+    // =====================================================
+    // ACTIVITY CREATION
+    // =====================================================
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webview);
@@ -70,21 +74,29 @@ private String currentRecordingPath = null;
         consoleText = findViewById(R.id.console_text);
 
         dataDir = new File(getFilesDir(), "js_data");
-        if (!dataDir.exists()) dataDir.mkdirs();
 
-        SharedPreferences prefs = getSharedPreferences(ToolsActivity.PREFS, MODE_PRIVATE);
+        if (!dataDir.exists()) {
+            dataDir.mkdirs();
+        }
+
+        SharedPreferences prefs =
+                getSharedPreferences(ToolsActivity.PREFS, MODE_PRIVATE);
+
         if (prefs.getBoolean(ToolsActivity.KEY_DEV, false)) {
             btnConsole.setVisibility(View.VISIBLE);
         }
 
         btnConsole.setOnClickListener(v -> toggleConsole());
-        findViewById(R.id.btn_close_console).setOnClickListener(v -> toggleConsole());
+
+        findViewById(R.id.btn_close_console)
+                .setOnClickListener(v -> toggleConsole());
 
         initTts();
         initSpeech();
         setupWebView();
 
         String filePath = getIntent().getStringExtra("file_path");
+
         if (filePath != null) {
             log("Loading: " + filePath);
             webView.loadUrl("file://" + filePath);
@@ -93,383 +105,837 @@ private String currentRecordingPath = null;
         }
     }
 
-    private void toggleConsole() {
-        consoleVisible = !consoleVisible;
-        consolePanel.setVisibility(consoleVisible ? View.VISIBLE : View.GONE);
-        if (consoleVisible) consoleText.setText(log.toString());
-    }
 
-    private void log(String msg) {
-        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-        log.append("[").append(time).append("] ").append(msg).append("\n");
+    // =====================================================
+    // CONSOLE
+    // =====================================================
+
+    private void toggleConsole() {
+
+        consoleVisible = !consoleVisible;
+
+        consolePanel.setVisibility(
+                consoleVisible ? View.VISIBLE : View.GONE
+        );
+
         if (consoleVisible) {
-            runOnUiThread(() -> consoleText.setText(log.toString()));
+            consoleText.setText(log.toString());
         }
     }
 
+
+    private void log(String msg) {
+
+        String time = new SimpleDateFormat(
+                "HH:mm:ss",
+                Locale.getDefault()
+        ).format(new Date());
+
+        log.append("[")
+                .append(time)
+                .append("] ")
+                .append(msg)
+                .append("\n");
+
+        if (consoleVisible) {
+            runOnUiThread(() ->
+                    consoleText.setText(log.toString())
+            );
+        }
+    }
+
+
+    // =====================================================
+    // TEXT TO SPEECH
+    // =====================================================
+
     private void initTts() {
+
         tts = new TextToSpeech(this, status -> {
+
             if (status == TextToSpeech.SUCCESS) {
                 tts.setLanguage(Locale.getDefault());
             }
+
         });
     }
 
+
+    // =====================================================
+    // SPEECH RECOGNITION
+    // =====================================================
+
     private void initSpeech() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) return;
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle p) {}
-            @Override public void onBeginningOfSpeech() {}
-            @Override public void onRmsChanged(float v) {}
-            @Override public void onBufferReceived(byte[] b) {}
-            @Override public void onEndOfSpeech() {}
-            @Override public void onPartialResults(Bundle b) {}
-            @Override public void onEvent(int i, Bundle b) {}
+
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            return;
+        }
+
+        speechRecognizer =
+                SpeechRecognizer.createSpeechRecognizer(this);
+
+        speechRecognizer.setRecognitionListener(
+                new RecognitionListener() {
+
+            @Override
+            public void onReadyForSpeech(Bundle p) {}
+
+            @Override
+            public void onBeginningOfSpeech() {}
+
+            @Override
+            public void onRmsChanged(float v) {}
+
+            @Override
+            public void onBufferReceived(byte[] b) {}
+
+            @Override
+            public void onEndOfSpeech() {}
+
+            @Override
+            public void onPartialResults(Bundle b) {}
+
+            @Override
+            public void onEvent(int i, Bundle b) {}
+
 
             @Override
             public void onError(int error) {
+
                 listening = false;
+
                 log("Speech error: " + error);
-                runOnUiThread(() -> webView.evaluateJavascript(
-                        "window.onSpeechError&&window.onSpeechError('Error "+error+"');", null));
+
+                runOnUiThread(() ->
+                        webView.evaluateJavascript(
+                                "window.onSpeechError&&window.onSpeechError('Error "
+                                        + error + "');",
+                                null
+                        )
+                );
             }
+
 
             @Override
             public void onResults(Bundle results) {
+
                 listening = false;
-                ArrayList<String> list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                String text = (list != null && !list.isEmpty()) ? list.get(0) : "";
+
+                ArrayList<String> list =
+                        results.getStringArrayList(
+                                SpeechRecognizer.RESULTS_RECOGNITION
+                        );
+
+                String text =
+                        (list != null && !list.isEmpty())
+                                ? list.get(0)
+                                : "";
+
                 log("Speech result: " + text);
-                String safe = text.replace("'", "\\'");
-                runOnUiThread(() -> webView.evaluateJavascript(
-                        "window.onSpeechResult&&window.onSpeechResult('"+safe+"');", null));
+
+                String safe = text
+                        .replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\n", " ");
+
+                runOnUiThread(() ->
+                        webView.evaluateJavascript(
+                                "window.onSpeechResult&&window.onSpeechResult('"
+                                        + safe + "');",
+                                null
+                        )
+                );
             }
+
         });
     }
 
+
+    // =====================================================
+    // WEBVIEW
+    // =====================================================
+
     private void setupWebView() {
+
         WebSettings s = webView.getSettings();
+
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
+
         s.setMediaPlaybackRequiresUserGesture(false);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+        s.setMixedContentMode(
+                WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        );
 
         webView.addJavascriptInterface(new Bridge(), "Android");
+
         webView.setWebViewClient(new WebViewClient());
+
         webView.setWebChromeClient(new WebChromeClient() {
+
             @Override
             public void onPermissionRequest(PermissionRequest request) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+
+                if (Build.VERSION.SDK_INT >=
+                        Build.VERSION_CODES.LOLLIPOP) {
+
                     request.grant(request.getResources());
                 }
             }
+
         });
     }
 
-    public class Bridge {
 
-// -------------------- Audio Recording & Playback --------------------
+    // =====================================================
+    // AUDIO PLAYBACK CLEANUP
+    // THIS METHOD IS ACCESSIBLE TO BOTH CLASSES
+    // =====================================================
 
-@JavascriptInterface
-public boolean startAudioRecording() {
-    try {
-        // Stop any previous recording
-        if (mediaRecorder != null) {
-            try { mediaRecorder.stop(); } catch (Exception ignored) {}
-            mediaRecorder.release();
-            mediaRecorder = null;
-        }
+    private void stopAudioPlayback() {
 
-        // Create file in the same private folder used by saveFile / loadFile
-        File dir = new File(getFilesDir(), "js_data");
-        if (!dir.exists()) dir.mkdirs();
+        try {
 
-        File outFile = new File(dir, "recording_" + System.currentTimeMillis() + ".m4a");
-        currentRecordingPath = outFile.getAbsolutePath();
+            if (mediaPlayer != null) {
 
-        mediaRecorder = new MediaRecorder();
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        mediaRecorder.setAudioEncodingBitRate(128000);
-        mediaRecorder.setAudioSamplingRate(44100);
-        mediaRecorder.setOutputFile(currentRecordingPath);
-        mediaRecorder.prepare();
-        mediaRecorder.start();
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
 
-        return true;
-    } catch (Exception e) {
-        e.printStackTrace();
-        currentRecordingPath = null;
-        return false;
-    }
-}
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
 
-@JavascriptInterface
-public String stopAudioRecording() {
-    try {
-        if (mediaRecorder != null) {
-            mediaRecorder.stop();
-            mediaRecorder.release();
-            mediaRecorder = null;
-        }
-        return currentRecordingPath;   // returns full path or null
-    } catch (Exception e) {
-        e.printStackTrace();
-        return null;
-    }
-}
+        } catch (Exception e) {
 
-@JavascriptInterface
-public boolean playAudio(String path) {
-    try {
-        stopAudioPlayback();   // stop any previous playback
-
-        if (path == null || path.isEmpty()) return false;
-
-        File f = new File(path);
-        if (!f.exists()) return false;
-
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mediaPlayer.setDataSource(path);
-        mediaPlayer.prepare();
-        mediaPlayer.start();
-        return true;
-    } catch (Exception e) {
-        e.printStackTrace();
-        return false;
-    }
-}
-
-@JavascriptInterface
-public void stopAudioPlayback() {
-    try {
-        if (mediaPlayer != null) {
-            if (mediaPlayer.isPlaying()) mediaPlayer.stop();
-            mediaPlayer.release();
+            e.printStackTrace();
             mediaPlayer = null;
         }
-    } catch (Exception e) {
-        e.printStackTrace();
     }
-}
 
-@JavascriptInterface
-public boolean deleteAudio(String path) {
-    try {
-        if (path == null || path.isEmpty()) return false;
-        File f = new File(path);
-        return f.exists() && f.delete();
-    } catch (Exception e) {
-        e.printStackTrace();
-        return false;
-    }
-}
 
-@JavascriptInterface
-public boolean isAudioPlaying() {
-    return mediaPlayer != null && mediaPlayer.isPlaying();
-    }
-        
-        // ===== Text-to-Speech =====
-        @JavascriptInterface
-        public void speak(String text) {
-            log("speak: " + text);
-            if (tts != null) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "id");
-        }
+    // =====================================================
+    // JAVASCRIPT BRIDGE
+    // =====================================================
+
+    public class Bridge {
+
+
+        // -------------------------------------------------
+        // AUDIO RECORDING
+        // -------------------------------------------------
 
         @JavascriptInterface
-        public void stopSpeaking() {
-            log("stopSpeaking");
-            if (tts != null) tts.stop();
-        }
+        public boolean startAudioRecording() {
 
-        @JavascriptInterface
-        public boolean setLanguage(String code) {
-            log("setLanguage: " + code);
-            if (tts == null) return false;
             try {
-                Locale locale;
-                if (code.contains("-")) {
-                    String[] parts = code.split("-");
-                    locale = new Locale(parts[0], parts[1]);
-                } else {
-                    locale = new Locale(code);
+
+                if (mediaRecorder != null) {
+
+                    try {
+                        mediaRecorder.stop();
+                    } catch (Exception ignored) {}
+
+                    mediaRecorder.release();
+                    mediaRecorder = null;
                 }
-                int result = tts.setLanguage(locale);
-                return result != TextToSpeech.LANG_MISSING_DATA
-                        && result != TextToSpeech.LANG_NOT_SUPPORTED;
-            } catch (Exception e) {
-                log("setLanguage error: " + e.getMessage());
-                return false;
-            }
-        }
 
-        @JavascriptInterface
-        public void setSpeechRate(float rate) {
-            log("setSpeechRate: " + rate);
-            if (tts != null) tts.setSpeechRate(rate);
-        }
+                File dir = new File(
+                        getFilesDir(),
+                        "js_data"
+                );
 
-        @JavascriptInterface
-        public void setPitch(float pitch) {
-            log("setPitch: " + pitch);
-            if (tts != null) tts.setPitch(pitch);
-        }
-
-        @JavascriptInterface
-        public boolean isSpeaking() {
-            return tts != null && tts.isSpeaking();
-        }
-
-        // ===== Microphone =====
-        @JavascriptInterface
-        public void startListening() {
-            log("startListening");
-            runOnUiThread(() -> {
-                if (speechRecognizer == null || listening) return;
-                Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                listening = true;
-                speechRecognizer.startListening(i);
-            });
-        }
-
-@JavascriptInterface
-public void stopListening() {
-    log("stopListening");
-    runOnUiThread(() -> {
-        if (speechRecognizer != null) {
-            try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
-            try { speechRecognizer.cancel(); } catch (Exception ignored) {}
-        }
-        listening = false;
-        // Tell the page that listening has stopped
-        webView.evaluateJavascript(
-            "window.onSpeechStopped&&window.onSpeechStopped();", null);
-    });
-}
-
-        // ===== File storage =====
-        @JavascriptInterface
-        public boolean saveFile(String name, String data) {
-            log("saveFile: " + name);
-            try {
-                if (name.contains("..") || name.contains("/")) return false;
-                File f = new File(dataDir, name);
-                try (FileOutputStream out = new FileOutputStream(f)) {
-                    out.write(data.getBytes(StandardCharsets.UTF_8));
+                if (!dir.exists()) {
+                    dir.mkdirs();
                 }
+
+                File outFile = new File(
+                        dir,
+                        "recording_" +
+                                System.currentTimeMillis() +
+                                ".m4a"
+                );
+
+                currentRecordingPath =
+                        outFile.getAbsolutePath();
+
+                mediaRecorder = new MediaRecorder();
+
+                mediaRecorder.setAudioSource(
+                        MediaRecorder.AudioSource.MIC
+                );
+
+                mediaRecorder.setOutputFormat(
+                        MediaRecorder.OutputFormat.MPEG_4
+                );
+
+                mediaRecorder.setAudioEncoder(
+                        MediaRecorder.AudioEncoder.AAC
+                );
+
+                mediaRecorder.setAudioEncodingBitRate(128000);
+
+                mediaRecorder.setAudioSamplingRate(44100);
+
+                mediaRecorder.setOutputFile(
+                        currentRecordingPath
+                );
+
+                mediaRecorder.prepare();
+                mediaRecorder.start();
+
                 return true;
+
             } catch (Exception e) {
-                log("saveFile error: " + e.getMessage());
+
+                e.printStackTrace();
+
+                currentRecordingPath = null;
+
                 return false;
             }
         }
 
+
         @JavascriptInterface
-        public String loadFile(String name) {
-            log("loadFile: " + name);
+        public String stopAudioRecording() {
+
             try {
-                if (name.contains("..") || name.contains("/")) return null;
-                File f = new File(dataDir, name);
-                if (!f.exists()) return null;
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader r = new BufferedReader(
-                        new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = r.readLine()) != null) sb.append(line).append("\n");
+
+                if (mediaRecorder != null) {
+
+                    mediaRecorder.stop();
+                    mediaRecorder.release();
+
+                    mediaRecorder = null;
                 }
-                return sb.toString().trim();
+
+                return currentRecordingPath;
+
             } catch (Exception e) {
-                log("loadFile error: " + e.getMessage());
+
+                e.printStackTrace();
+
                 return null;
             }
         }
 
+
+        // -------------------------------------------------
+        // AUDIO PLAYBACK
+        // -------------------------------------------------
+
+        @JavascriptInterface
+        public boolean playAudio(String path) {
+
+            try {
+
+                stopAudioPlayback();
+
+                if (path == null || path.isEmpty()) {
+                    return false;
+                }
+
+                File f = new File(path);
+
+                if (!f.exists()) {
+                    return false;
+                }
+
+                mediaPlayer = new MediaPlayer();
+
+                mediaPlayer.setAudioStreamType(
+                        AudioManager.STREAM_MUSIC
+                );
+
+                mediaPlayer.setDataSource(path);
+
+                mediaPlayer.prepare();
+
+                mediaPlayer.start();
+
+                return true;
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+
+                stopAudioPlayback();
+
+                return false;
+            }
+        }
+
+
+        @JavascriptInterface
+        public void stopAudioPlayback() {
+
+            MainActivity.this.stopAudioPlayback();
+        }
+
+
+        @JavascriptInterface
+        public boolean deleteAudio(String path) {
+
+            try {
+
+                if (path == null || path.isEmpty()) {
+                    return false;
+                }
+
+                File f = new File(path);
+
+                return f.exists() && f.delete();
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+
+                return false;
+            }
+        }
+
+
+        @JavascriptInterface
+        public boolean isAudioPlaying() {
+
+            try {
+                return mediaPlayer != null &&
+                        mediaPlayer.isPlaying();
+
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+
+        // -------------------------------------------------
+        // TEXT TO SPEECH
+        // -------------------------------------------------
+
+        @JavascriptInterface
+        public void speak(String text) {
+
+            log("speak: " + text);
+
+            if (tts != null) {
+
+                tts.speak(
+                        text,
+                        TextToSpeech.QUEUE_FLUSH,
+                        null,
+                        "id"
+                );
+            }
+        }
+
+
+        @JavascriptInterface
+        public void stopSpeaking() {
+
+            log("stopSpeaking");
+
+            if (tts != null) {
+                tts.stop();
+            }
+        }
+
+
+        @JavascriptInterface
+        public boolean setLanguage(String code) {
+
+            log("setLanguage: " + code);
+
+            if (tts == null) {
+                return false;
+            }
+
+            try {
+
+                Locale locale;
+
+                if (code.contains("-")) {
+
+                    String[] parts = code.split("-");
+
+                    locale = new Locale(
+                            parts[0],
+                            parts[1]
+                    );
+
+                } else {
+
+                    locale = new Locale(code);
+                }
+
+                int result = tts.setLanguage(locale);
+
+                return result != TextToSpeech.LANG_MISSING_DATA
+                        && result != TextToSpeech.LANG_NOT_SUPPORTED;
+
+            } catch (Exception e) {
+
+                log("setLanguage error: " + e.getMessage());
+
+                return false;
+            }
+        }
+
+
+        @JavascriptInterface
+        public void setSpeechRate(float rate) {
+
+            log("setSpeechRate: " + rate);
+
+            if (tts != null) {
+                tts.setSpeechRate(rate);
+            }
+        }
+
+
+        @JavascriptInterface
+        public void setPitch(float pitch) {
+
+            log("setPitch: " + pitch);
+
+            if (tts != null) {
+                tts.setPitch(pitch);
+            }
+        }
+
+
+        @JavascriptInterface
+        public boolean isSpeaking() {
+
+            return tts != null && tts.isSpeaking();
+        }
+
+
+        // -------------------------------------------------
+        // MICROPHONE / SPEECH RECOGNITION
+        // -------------------------------------------------
+
+        @JavascriptInterface
+        public void startListening() {
+
+            log("startListening");
+
+            runOnUiThread(() -> {
+
+                if (speechRecognizer == null || listening) {
+                    return;
+                }
+
+                Intent i = new Intent(
+                        RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+                );
+
+                i.putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                );
+
+                listening = true;
+
+                speechRecognizer.startListening(i);
+            });
+        }
+
+
+        @JavascriptInterface
+        public void stopListening() {
+
+            log("stopListening");
+
+            runOnUiThread(() -> {
+
+                if (speechRecognizer != null) {
+
+                    try {
+                        speechRecognizer.stopListening();
+                    } catch (Exception ignored) {}
+
+                    try {
+                        speechRecognizer.cancel();
+                    } catch (Exception ignored) {}
+                }
+
+                listening = false;
+
+                webView.evaluateJavascript(
+                        "window.onSpeechStopped&&window.onSpeechStopped();",
+                        null
+                );
+            });
+        }
+
+
+        // -------------------------------------------------
+        // FILE STORAGE
+        // -------------------------------------------------
+
+        @JavascriptInterface
+        public boolean saveFile(String name, String data) {
+
+            log("saveFile: " + name);
+
+            try {
+
+                if (name.contains("..") || name.contains("/")) {
+                    return false;
+                }
+
+                File f = new File(dataDir, name);
+
+                try (FileOutputStream out =
+                             new FileOutputStream(f)) {
+
+                    out.write(
+                            data.getBytes(StandardCharsets.UTF_8)
+                    );
+                }
+
+                return true;
+
+            } catch (Exception e) {
+
+                log("saveFile error: " + e.getMessage());
+
+                return false;
+            }
+        }
+
+
+        @JavascriptInterface
+        public String loadFile(String name) {
+
+            log("loadFile: " + name);
+
+            try {
+
+                if (name.contains("..") || name.contains("/")) {
+                    return null;
+                }
+
+                File f = new File(dataDir, name);
+
+                if (!f.exists()) {
+                    return null;
+                }
+
+                StringBuilder sb = new StringBuilder();
+
+                try (BufferedReader r =
+                             new BufferedReader(
+                                     new InputStreamReader(
+                                             new FileInputStream(f),
+                                             StandardCharsets.UTF_8
+                                     )
+                             )) {
+
+                    String line;
+
+                    while ((line = r.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                }
+
+                return sb.toString().trim();
+
+            } catch (Exception e) {
+
+                log("loadFile error: " + e.getMessage());
+
+                return null;
+            }
+        }
+
+
         @JavascriptInterface
         public boolean deleteFile(String name) {
+
             log("deleteFile: " + name);
+
             try {
-                if (name.contains("..") || name.contains("/")) return false;
+
+                if (name.contains("..") || name.contains("/")) {
+                    return false;
+                }
+
                 File f = new File(dataDir, name);
+
                 return f.exists() && f.delete();
-            } catch (Exception e) { return false; }
+
+            } catch (Exception e) {
+
+                return false;
+            }
         }
+
 
         @JavascriptInterface
         public String listFiles() {
+
             log("listFiles");
+
             try {
+
                 File[] files = dataDir.listFiles();
+
                 JSONArray arr = new JSONArray();
-                if (files != null) for (File f : files) if (f.isFile()) arr.put(f.getName());
+
+                if (files != null) {
+
+                    for (File f : files) {
+
+                        if (f.isFile()) {
+                            arr.put(f.getName());
+                        }
+                    }
+                }
+
                 return arr.toString();
-            } catch (Exception e) { return "[]"; }
+
+            } catch (Exception e) {
+
+                return "[]";
+            }
         }
+
 
         @JavascriptInterface
         public String getDataPath() {
+
             log("getDataPath");
+
             return dataDir.getAbsolutePath();
         }
+
     }
+
+
+    // =====================================================
+    // ACTIVITY PAUSE
+    // =====================================================
 
     @Override
     protected void onPause() {
-    super.onPause();
-    // Stop recording/playback when app goes to background
-    try {
-        if (mediaRecorder != null) {
-            mediaRecorder.stop();
-            mediaRecorder.release();
-            mediaRecorder = null;
-        }
-    } catch (Exception ignored) {}
-    stopAudioPlayback();
-}
 
-    
+        super.onPause();
+
+        // Stop recording when app goes into background
+
+        try {
+
+            if (mediaRecorder != null) {
+
+                mediaRecorder.stop();
+                mediaRecorder.release();
+
+                mediaRecorder = null;
+            }
+
+        } catch (Exception ignored) {
+
+            if (mediaRecorder != null) {
+
+                try {
+                    mediaRecorder.release();
+                } catch (Exception ignoredAgain) {}
+
+                mediaRecorder = null;
+            }
+        }
+
+        // Stop audio playback
+
+        stopAudioPlayback();
+    }
+
+
+    // =====================================================
+    // BACK BUTTON
+    // =====================================================
+
     @Override
     public void onBackPressed() {
+
         if (consoleVisible) {
+
             toggleConsole();
+
         } else if (webView.canGoBack()) {
+
             webView.goBack();
+
         } else {
+
             super.onBackPressed();
         }
     }
 
-     @Override
+
+    // =====================================================
+    // ACTIVITY DESTRUCTION
+    // =====================================================
+
+    @Override
     protected void onDestroy() {
-    super.onDestroy();
 
-    // Release MediaRecorder
-    try {
-        if (mediaRecorder != null) {
-            mediaRecorder.release();
-            mediaRecorder = null;
+        // Release MediaRecorder
+
+        try {
+
+            if (mediaRecorder != null) {
+
+                mediaRecorder.release();
+
+                mediaRecorder = null;
+            }
+
+        } catch (Exception ignored) {}
+
+
+        // Stop audio playback
+
+        stopAudioPlayback();
+
+
+        // Stop and release Text-to-Speech
+
+        if (tts != null) {
+
+            tts.stop();
+            tts.shutdown();
+
+            tts = null;
         }
-    } catch (Exception ignored) {}
 
-    // Stop audio playback
-    stopAudioPlayback();
 
-    // Stop Text-to-Speech
-    if (tts != null) {
-        tts.stop();
-        tts.shutdown();
+        // Destroy Speech Recognizer
+
+        if (speechRecognizer != null) {
+
+            speechRecognizer.destroy();
+
+            speechRecognizer = null;
+        }
+
+
+        // Destroy WebView
+
+        if (webView != null) {
+
+            webView.destroy();
+
+            webView = null;
+        }
+
+
+        super.onDestroy();
     }
 
-    // Destroy Speech Recognizer
-    if (speechRecognizer != null) {
-        speechRecognizer.destroy();
-    }
-}
-    
 }
