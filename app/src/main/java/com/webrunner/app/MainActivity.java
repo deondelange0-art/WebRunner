@@ -420,7 +420,7 @@ public void stopListening() {
     }
 
     @Override
-protected void onPause() {
+    protected void onPause() {
     super.onPause();
     // Stop recording/playback when app goes to background
     try {
@@ -433,17 +433,6 @@ protected void onPause() {
     stopAudioPlayback();
 }
 
-@Override
-protected void onDestroy() {
-    super.onDestroy();
-    try {
-        if (mediaRecorder != null) {
-            mediaRecorder.release();
-            mediaRecorder = null;
-        }
-    } catch (Exception ignored) {}
-    stopAudioPlayback();
-}
     
     @Override
     public void onBackPressed() {
@@ -456,10 +445,31 @@ protected void onDestroy() {
         }
     }
 
-    @Override
+     @Override
     protected void onDestroy() {
-        if (tts != null) { tts.stop(); tts.shutdown(); }
-        if (speechRecognizer != null) speechRecognizer.destroy();
-        super.onDestroy();
+    super.onDestroy();
+
+    // Release MediaRecorder
+    try {
+        if (mediaRecorder != null) {
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+    } catch (Exception ignored) {}
+
+    // Stop audio playback
+    stopAudioPlayback();
+
+    // Stop Text-to-Speech
+    if (tts != null) {
+        tts.stop();
+        tts.shutdown();
     }
+
+    // Destroy Speech Recognizer
+    if (speechRecognizer != null) {
+        speechRecognizer.destroy();
+    }
+}
+    
 }
